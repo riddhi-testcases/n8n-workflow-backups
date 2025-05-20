@@ -2,7 +2,7 @@
 
 This repository contains an **n8n workflow** that automates the process of fetching news articles, summarizing them using an AI model via OpenRouter, analyzing sentiment, and storing the processed data in a PostgreSQL database powered by **Nhost + Hasura**.
 
-![News Summarization Workflow](./d2aa79ac-04ac-44ca-9ea7-54337e69931a.png)
+![Workflow Screenshot](./screenshot-2025-05-20-121739.png)
 
 ---
 
