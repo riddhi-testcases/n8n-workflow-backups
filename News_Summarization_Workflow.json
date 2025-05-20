@@ -1,0 +1,420 @@
+{
+  "name": "News Summarization Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        80,
+        40
+      ],
+      "id": "4f4e6cb5-26de-4513-9202-265023d65912",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://newsapi.org/v2/top-headlines?country=us&apiKey=bae65e1ea0e646fcb362af3f747c53db",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        80
+      ],
+      "id": "0630d1b2-e416-4b36-9dae-8abb3e092d51",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "json",
+        "body": "={\n  \"model\": \"openai/gpt-3.5-turbo\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Please summarize the article in the following structured format:\\n\\nSummary: <summary here>\\nSentiment: <positive/neutral/negative>\\nExplanation: <brief reason for the sentiment>\\n\\nHere is the article:\\n\\n{{ $json.content }}\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        -80
+      ],
+      "id": "e05b7840-4ec5-4e86-9f00-c20b38fd920e",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO news_articles (id, title, content, url, published_at, source)\nVALUES (\n  '{{$json[\"id\"]}}',\n  '{{$json[\"title\"]}}',\n  '{{$json[\"content\"]}}',\n  '{{$json[\"url\"]}}',\n  '{{$json[\"published_at\"]}}',\n  '{{$json[\"source\"]}}'\n)\nON CONFLICT (id) DO NOTHING;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2000,
+        200
+      ],
+      "id": "26fdc6ed-9613-473b-a5c0-1edf18902b51",
+      "name": "Postgres2",
+      "credentials": {
+        "postgres": {
+          "id": "OgEcBSZCxbYtXYg7",
+          "name": "Postgres account 23"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "includeUnpaired": true
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        1520,
+        220
+      ],
+      "id": "3e7ca14f-ff9d-4935-9611-98b034562db6",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "function generateUUID() {\n  let dt = new Date().getTime();\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = (dt + Math.random() * 16) % 16 | 0;\n    dt = Math.floor(dt / 16);\n    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);\n  });\n}\n\nconst article = $json.articles[0];\n\nconst uuid = generateUUID();\n\nreturn [{\n  id: uuid,\n  news_id: uuid,\n  title: article.title,\n  content: article.content || article.description || \"No content available\",\n  url: article.url,\n  published_at: new Date(article.publishedAt).toISOString(),\n  source: article.source.name\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        160
+      ],
+      "id": "9702fa02-e797-4350-861c-ff13d389cedb",
+      "name": "Code ( Generate UUIDs + pick article fields )"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    messages: [\n      {\n        role: \"user\",\n        content: `Summarize this news article with sentiment and a short explanation:\\n\\n${$json[\"content\"]}`\n      }\n    ]\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        20
+      ],
+      "id": "cce4b457-cc08-46ee-ac52-ed67a160785f",
+      "name": "Code Node 2\tPrepare content string"
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $json.choices[0].message.content;\n\nconst summaryMatch = content.match(/Summary:\\s*(.*)/);\nconst sentimentMatch = content.match(/Sentiment:\\s*(.*)/);\nconst explanationMatch = content.match(/Explanation:\\s*(.*)/);\n\nreturn [{\n  summary: summaryMatch ? summaryMatch[1].trim() : null,\n  sentiment: sentimentMatch ? sentimentMatch[1].trim() : null,\n  explanation: explanationMatch ? explanationMatch[1].trim() : null\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        20
+      ],
+      "id": "bc293483-6bef-49c8-b738-b95ac3ea0d0c",
+      "name": "Code Node 3\tParse summary, sentiment, etc."
+    },
+    {
+      "parameters": {
+        "jsCode": "function escapeQuotes(str) {\n  return str ? str.replace(/'/g, \"''\") : str;\n}\n\nreturn [{\n  id: $json.id,\n  title: escapeQuotes($json.title),\n  content: escapeQuotes($json.content),\n  url: $json.url,\n  published_at: $json.published_at,\n  source: escapeQuotes($json.source)\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        220
+      ],
+      "id": "a30cd923-cf2b-408c-8db0-40580d813c3c",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "07bd6d5b-3712-4cd4-ad32-e8e3e1d6b3ad",
+              "name": "=id",
+              "value": "={{ $json[\"news_id\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "7d58a53e-3a43-40c1-b3cb-d541add8685f",
+              "name": "=news_id",
+              "value": "={{ $json[\"news_id\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "18fa7a17-b59c-4b7a-9001-f037ff5868c9",
+              "name": "=summary",
+              "value": "={{ $json[\"summary\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "cd59d5c3-7d7b-488d-9fa9-420c1e2e125c",
+              "name": "=sentiment",
+              "value": "={{ $json[\"sentiment\"].toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "50565667-ef38-4504-ad4a-54ca781052f2",
+              "name": "=explanation",
+              "value": "={{ $json[\"explanation\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1780,
+        560
+      ],
+      "id": "44934b12-7210-4a1e-ba06-5b8f0ef1b691",
+      "name": "Prepare News Summary"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "news_summaries",
+          "mode": "list",
+          "cachedResultName": "news_summaries"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json[\"id\"] }}",
+            "news_id": "={{ $json[\"news_id\"] }}",
+            "summary": "={{ $json[\"summary\"] }}",
+            "sentiment": "={{ $json[\"sentiment\"] }}",
+            "explanation": "={{ $json[\"explanation\"] }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "news_id",
+              "displayName": "news_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sentiment",
+              "displayName": "sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "explanation",
+              "displayName": "explanation",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2000,
+        560
+      ],
+      "id": "f5372e03-7757-4ce5-9aff-06f9022322f5",
+      "name": "Postgres3",
+      "credentials": {
+        "postgres": {
+          "id": "OgEcBSZCxbYtXYg7",
+          "name": "Postgres account 23"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code ( Generate UUIDs + pick article fields )",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code Node 3\tParse summary, sentiment, etc.",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres2": {
+      "main": [
+        []
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare News Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code ( Generate UUIDs + pick article fields )": {
+      "main": [
+        [
+          {
+            "node": "Code Node 2\tPrepare content string",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code Node 2\tPrepare content string": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Node 3\tParse summary, sentiment, etc.": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Postgres2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare News Summary": {
+      "main": [
+        [
+          {
+            "node": "Postgres3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cba40702-7cea-4c76-a212-1730105e806b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5229ad676c3a8d293c6db345f673ae85f2faeec97332d940e6b8ecea4c050d50"
+  },
+  "id": "87ZISao5GHzAWi4N",
+  "tags": []
+}
