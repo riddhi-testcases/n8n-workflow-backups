@@ -1,4 +1,4 @@
-# 📰 News Summarization Workflow with n8n + Nhost (Hasura)
+# News Summarization Workflow with n8n + Nhost (Hasura)
 
 This repository contains an **n8n workflow** that automates the process of fetching news articles, summarizing them using an AI model via OpenRouter, analyzing sentiment, and storing the processed data in a PostgreSQL database powered by **Nhost + Hasura**.
 
