@@ -39,11 +39,11 @@ This repository contains an **n8n workflow** that automates the process of fetch
 
 ---
 
-## 🧪 Features
+## Features
 
-- 🧠 AI-Powered Summarization & Sentiment via OpenRouter
-- 🔐 Secure GraphQL integration with Hasura
-- 🔀 UUID and formatting handled via Code nodes
-- ⚡ Optimized to run on-demand or on schedule
+- AI-Powered Summarization & Sentiment via OpenRouter
+- Secure GraphQL integration with Hasura
+- UUID and formatting handled via Code nodes
+- Optimized to run on-demand or on schedule
 
 
