@@ -30,7 +30,7 @@ This repository contains an **n8n workflow** that automates the process of fetch
 
 ---
 
-## ⚙️ Requirements
+## Requirements
 
 - [n8n](https://n8n.io) instance
 - [Nhost](https://nhost.io) project (with Hasura access)
