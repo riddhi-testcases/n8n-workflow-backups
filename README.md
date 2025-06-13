@@ -20,7 +20,7 @@ This repository contains an **n8n workflow** that automates the process of fetch
 
 ---
 
-## 🚀 Tech Stack
+## Tech Stack
 
 - **n8n** (Automation workflow engine)
 - **Nhost** (PostgreSQL + Hasura backend)
