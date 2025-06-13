@@ -6,7 +6,7 @@ This repository contains an **n8n workflow** that automates the process of fetch
 
 ---
 
-## 🧠 Workflow Overview
+## Workflow Overview
 
 1. **Trigger:** The workflow starts manually via the "Test workflow" trigger node.
 2. **HTTP Request (NewsAPI):** Fetches top headlines from [NewsAPI](https://newsapi.org).
